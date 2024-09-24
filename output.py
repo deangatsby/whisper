@@ -1,7 +1,12 @@
+from pyannote.audio import Pipeline
+import torch
 import whisper
 import moviepy.editor as mp
 from moviepy.editor import VideoFileClip
 import os
+
+# Load the pyannote diarization model (pre-trained)
+diarization_pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization")
 
 #Load OpeAI Whisper model
 model = whisper.load_model("medium")
@@ -39,6 +44,17 @@ except Exception as e:
 if not os.path.exists(audio_file):
     print(f"Audio file was not created: {audio_file}")
     exit(1)
+
+# Perform diarization on the audio
+diarization_result = diarization_pipeline("audio_file.wav")
+
+# Transcribe each segment with Whisper and associate it with the corresponding speaker
+with open("audio_file.wav", "rb") as audio_file:
+    for segment, _, speaker in diarization_result.itertracks(yield_label=True):
+        start_time, end_time = segment.start, segment.end
+        # Extract the relevant audio segment for Whisper transcription
+        transcription = whisper_model.transcribe(audio_file, start_time=start_time, end_time=end_time)
+        print(f"Speaker {speaker}: {transcription['text']}")
 
 
 # Transcribe audio
